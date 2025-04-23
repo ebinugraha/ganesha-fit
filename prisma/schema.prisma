@@ -1,0 +1,295 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Model untuk petugas yang menggunakan auth Clerk
+model Petugas {
+  id                String              @id @default(uuid())
+  clerkId           String              @unique
+  nama              String
+  email             String              @unique
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  checkInCheckOut   CheckInCheckOut[]
+  pembayaran        Pembayaran[]
+  kelas             KelasInstruktur[]   @relation("PetugasKelas")
+}
+
+// Model untuk anggota gym
+model Anggota {
+  id                 String             @id @default(uuid())
+  nomorAnggota       String             @unique
+  nama               String
+  email              String?            @unique
+  jenisKelamin       JenisKelamin
+  alamat             String?
+  tanggalLahir       DateTime?
+  noTelepon          String?
+  fotoProfil         String?
+  tanggalDaftar      DateTime           @default(now())
+  statusKeanggotaan  StatusKeanggotaan  @default(AKTIF)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  kelasDiikuti       KelasAnggota[]
+  riwayatKunjungan   CheckInCheckOut[]
+  riwayatPembayaran  Pembayaran[]
+  keanggotaan        Keanggotaan?
+}
+
+// Tipe keanggotaan
+model TipeKeanggotaan {
+  id             String         @id @default(uuid())
+  nama           String         @unique
+  deskripsi      String?
+  harga          Float
+  durasiHari     Int            // Durasi dalam hari
+  aksesKelas     Boolean        @default(false)  // Apakah bisa ikut kelas?
+  aksesPelatih   Boolean        @default(false)  // Apakah dapat akses pelatih pribadi?
+  aksesLoker     Boolean        @default(false)  // Apakah dapat akses loker?
+  aksesSauna     Boolean        @default(false)  // Apakah dapat akses sauna?
+  aksesFasilitas String?        // Fasilitas lain (comma separated)
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  keanggotaan    Keanggotaan[]
+}
+
+// Keanggotaan anggota
+model Keanggotaan {
+  id                String             @id @default(uuid())
+  anggotaId         String             @unique
+  anggota           Anggota            @relation(fields: [anggotaId], references: [id], onDelete: Cascade)
+  tipeKeanggotaanId String
+  tipeKeanggotaan   TipeKeanggotaan    @relation(fields: [tipeKeanggotaanId], references: [id])
+  tanggalMulai      DateTime           @default(now())
+  tanggalBerakhir   DateTime
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  riwayatPerpanjangan RiwayatPerpanjangan[]
+}
+
+// Riwayat perpanjangan keanggotaan
+model RiwayatPerpanjangan {
+  id                String             @id @default(uuid())
+  keanggotaanId     String
+  keanggotaan       Keanggotaan        @relation(fields: [keanggotaanId], references: [id], onDelete: Cascade)
+  tanggalMulaiLama  DateTime
+  tanggalBerakhirLama DateTime
+  tanggalMulaiBaru  DateTime
+  tanggalBerakhirBaru DateTime
+  petugasId         String?
+  keterangan        String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  pembayaranId      String?            @unique
+  pembayaran        Pembayaran?        @relation(fields: [pembayaranId], references: [id])
+}
+
+// Model untuk mencatat check in dan check out anggota
+model CheckInCheckOut {
+  id             String          @id @default(uuid())
+  anggotaId      String
+  anggota        Anggota         @relation(fields: [anggotaId], references: [id], onDelete: Cascade)
+  petugasId      String?
+  petugas        Petugas?        @relation(fields: [petugasId], references: [id])
+  waktuCheckIn   DateTime        @default(now())
+  waktuCheckOut  DateTime?
+  durasi         Int?            // Durasi dalam menit
+  catatan        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+// Model untuk pembayaran
+model Pembayaran {
+  id                  String               @id @default(uuid())
+  nomorInvoice        String               @unique
+  anggotaId           String
+  anggota             Anggota              @relation(fields: [anggotaId], references: [id], onDelete: Cascade)
+  petugasId           String?
+  petugas             Petugas?             @relation(fields: [petugasId], references: [id])
+  tanggalPembayaran   DateTime             @default(now())
+  jumlahPembayaran    Float
+  metodePembayaran    MetodePembayaran
+  statusPembayaran    StatusPembayaran     @default(PENDING)
+  tipePembayaran      TipePembayaran
+  riwayatPerpanjangan RiwayatPerpanjangan?
+  keterangan          String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+// Model untuk kelas di gym
+model Kelas {
+  id              String            @id @default(uuid())
+  nama            String
+  deskripsi       String?
+  kapasitas       Int
+  durasi          Int               // Durasi dalam menit
+  tingkatKesulitan TingkatKesulitan @default(PEMULA)
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  jadwalKelas     JadwalKelas[]
+  instruktur      KelasInstruktur[]
+  anggota         KelasAnggota[]
+}
+
+// Model untuk jadwal kelas
+model JadwalKelas {
+  id              String            @id @default(uuid())
+  kelasId         String
+  kelas           Kelas             @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+  hariJadwal      HariJadwal
+  jamMulai        String            // Format: "HH:MM"
+  jamSelesai      String            // Format: "HH:MM"
+  ruangan         String?
+  kapasitasKhusus Int?              // Jika berbeda dari kapasitas default kelas
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+// Model untuk menghubungkan kelas dengan instruktur (petugas)
+model KelasInstruktur {
+  id              String            @id @default(uuid())
+  kelasId         String
+  kelas           Kelas             @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+  petugasId       String
+  petugas         Petugas           @relation("PetugasKelas", fields: [petugasId], references: [id])
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([kelasId, petugasId])
+}
+
+// Model untuk anggota yang mendaftar kelas
+model KelasAnggota {
+  id              String            @id @default(uuid())
+  kelasId         String
+  kelas           Kelas             @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+  anggotaId       String
+  anggota         Anggota           @relation(fields: [anggotaId], references: [id], onDelete: Cascade)
+  statusKehadiran StatusKehadiran   @default(TERDAFTAR)
+  tanggalDaftar   DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([kelasId, anggotaId])
+}
+
+// Model untuk peralatan gym
+model Peralatan {
+  id               String           @id @default(uuid())
+  nama             String
+  deskripsi        String?
+  jenisPeralatan   String
+  tanggalBeli      DateTime?
+  tanggalServis    DateTime?
+  kondisi          KondisiPeralatan @default(BAIK)
+  fotoPeralatan    String?
+  lokasiGym        String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  riwayatPerawatan PerawatanPeralatan[]
+}
+
+// Model untuk perawatan peralatan
+model PerawatanPeralatan {
+  id               String          @id @default(uuid())
+  peralatanId      String
+  peralatan        Peralatan       @relation(fields: [peralatanId], references: [id], onDelete: Cascade)
+  tanggalPerawatan DateTime        @default(now())
+  jenisPerbaikan   String
+  biaya            Float?
+  teknisi          String?
+  catatan          String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+// Enum untuk jenis kelamin
+enum JenisKelamin {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+// Enum untuk status keanggotaan
+enum StatusKeanggotaan {
+  AKTIF
+  TIDAK_AKTIF
+  SUSPENDED
+  HABIS
+}
+
+// Enum untuk metode pembayaran
+enum MetodePembayaran {
+  TUNAI
+  KARTU_KREDIT
+  KARTU_DEBIT
+  TRANSFER_BANK
+  E_WALLET
+  LAINNYA
+}
+
+// Enum untuk status pembayaran
+enum StatusPembayaran {
+  PENDING
+  BERHASIL
+  GAGAL
+  DIBATALKAN
+}
+
+// Enum untuk tipe pembayaran
+enum TipePembayaran {
+  KEANGGOTAAN_BARU
+  PERPANJANGAN
+  KELAS
+  PELATIH_PRIBADI
+  MERCHANDISE
+  LAINNYA
+}
+
+// Enum untuk tingkat kesulitan kelas
+enum TingkatKesulitan {
+  PEMULA
+  MENENGAH
+  LANJUTAN
+  SEMUA_LEVEL
+}
+
+// Enum untuk hari jadwal
+enum HariJadwal {
+  SENIN
+  SELASA
+  RABU
+  KAMIS
+  JUMAT
+  SABTU
+  MINGGU
+}
+
+// Enum untuk status kehadiran
+enum StatusKehadiran {
+  TERDAFTAR
+  HADIR
+  TIDAK_HADIR
+  DIBATALKAN
+}
+
+// Enum untuk kondisi peralatan
+enum KondisiPeralatan {
+  BAIK
+  RUSAK_RINGAN
+  RUSAK_BERAT
+  DALAM_PERBAIKAN
+  TIDAK_TERSEDIA
+}
