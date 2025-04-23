@@ -55,7 +55,7 @@ model TipeKeanggotaan {
   aksesPelatih   Boolean        @default(false)  // Apakah dapat akses pelatih pribadi?
   aksesLoker     Boolean        @default(false)  // Apakah dapat akses loker?
   aksesSauna     Boolean        @default(false)  // Apakah dapat akses sauna?
-  aksesFasilitas String?        // Fasilitas lain (comma separated)
+  aksesFasilitas Boolean        @default(false)        // Fasilitas lain (comma separated)
   isActive       Boolean        @default(true)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt

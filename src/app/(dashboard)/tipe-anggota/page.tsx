@@ -34,9 +34,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
+import { useEffect } from 'react';
 
 const AnggotaPage = async () => {
-  const data = await prisma.anggota.findMany({});
+  // get all data from prisma
+  const data = await prisma.tipeKeanggotaan.findMany({});
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -56,7 +58,7 @@ const AnggotaPage = async () => {
 
       {/* section card anggota */}
 
-      <div className="grid grid-cols-3 gap-4 px-8">
+      <div className="md:grid grid-cols-3 gap-4 px-8">
         <Card className="@container/card">
           <CardHeader>
             <CardDescription>
