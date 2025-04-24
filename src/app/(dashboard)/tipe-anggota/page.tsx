@@ -20,10 +20,12 @@ import {
   Key,
   KeyRound,
   MoreHorizontal,
+  Pencil,
   ShowerHead,
+  Trash,
   UserPlus,
 } from 'lucide-react';
-import { prisma } from '../../../lib/prisma';
+import { db } from '../../../lib/prisma';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -34,11 +36,25 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { startTransition, useEffect } from 'react';
+import { TipeKeanggotaan } from '@prisma/client';
+import { toast } from 'sonner';
+import { DeleteButton } from './delete-button';
+
+async function getData() {
+  try {
+    // Ambil data dari Prisma (di server)
+    const data: TipeKeanggotaan[] = await db.tipeKeanggotaan.findMany({});
+    return data;
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    return [];
+  }
+}
 
 const AnggotaPage = async () => {
   // get all data from prisma
-  const data = await prisma.tipeKeanggotaan.findMany({});
+  const data = await getData();
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -59,86 +75,122 @@ const AnggotaPage = async () => {
       {/* section card anggota */}
 
       <div className="md:grid grid-cols-3 gap-4 px-8">
-        <Card className="@container/card">
-          <CardHeader>
-            <CardDescription>
-              <div className="flex w-full items-center justify-between">
-                <Badge variant={'default'}>Aktif</Badge>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size={'icon'} variant={'ghost'}>
-                      <MoreHorizontal />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem>Profile</DropdownMenuItem>
-                    <DropdownMenuItem>Billing</DropdownMenuItem>
-                    <DropdownMenuItem>Team</DropdownMenuItem>
-                    <DropdownMenuItem>Subscription</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardDescription>
-            <Separator className="my-2" />
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              VIP
-            </CardTitle>
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1.5 text-sm">
-            {/* durasi */}
-            <div className="flex gap-2 font-medium w-full">
-              <div className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="size-4" />
-                  Durasi
+        {data.map((item) => (
+          <Card className="@container/card" key={item.id}>
+            <CardHeader>
+              <CardDescription>
+                <div className="flex w-full items-center justify-between">
+                  <Badge variant={item.isActive ? 'default' : 'destructive'}>
+                    {item.isActive ? 'Aktif' : 'Tidak Aktif'}
+                  </Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size={'icon'} variant={'ghost'}>
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuLabel>Menu</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        asChild
+                        className="flex justify-between cursor-pointer"
+                      >
+                        <Button
+                          className="w-full justify-between px-2 flex gap-2"
+                          variant={'ghost'}
+                          asChild
+                        >
+                          <Link href={`/tipe-anggota/${item.id}`}>
+                            Edit
+                            <Pencil className="text-yellow-400" />
+                          </Link>
+                        </Button>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        asChild
+                        className="flex justify-between cursor-pointer"
+                      >
+                        <DeleteButton id={item.id} />
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-                <span className="font-bold">5 hari</span>
-              </div>
-            </div>
-            {/* akses kelas */}
-            <div className="flex gap-2 font-medium w-full">
-              <div className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <DoorOpen className="size-4" />
-                  Akses Kelas
+              </CardDescription>
+              <Separator className="my-2" />
+              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-2xl text-slate-700">
+                {item.nama}
+              </CardTitle>
+              <span className="font-light text-sm">{item.deskripsi}</span>
+            </CardHeader>
+            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              {/* durasi */}
+              <div className="flex gap-2 font-medium w-full">
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="size-4" />
+                    Durasi
+                  </div>
+                  <span className="font-bold">{item.durasiHari} hari</span>
                 </div>
-                <span className="font-bold">Tidak</span>
               </div>
-            </div>
-            {/* akses loker */}
-            <div className="flex gap-2 font-medium w-full">
-              <div className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <KeyRound className="size-4" />
-                  Loker
+              {/* akses kelas */}
+              <div className="flex gap-2 font-medium w-full">
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DoorOpen className="size-4" />
+                    Akses Kelas
+                  </div>
+                  <span className="font-bold">
+                    {item.aksesKelas ? 'Ya' : 'Tidak'}
+                  </span>
                 </div>
-                <span className="font-bold">Ya</span>
               </div>
-            </div>
-            {/* akses sauna */}
-            <div className="flex gap-2 font-medium w-full">
-              <div className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShowerHead className="size-4" />
-                  Sauna
+              {/* akses loker */}
+              <div className="flex gap-2 font-medium w-full">
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="size-4" />
+                    Loker
+                  </div>
+                  <span className="font-bold">
+                    {' '}
+                    {item.aksesLoker ? 'Ya' : 'Tidak'}
+                  </span>
                 </div>
-                <span className="font-bold">Tidak</span>
               </div>
-            </div>
-            {/* akses fasilitas */}
-            <div className="flex gap-2 font-medium w-full">
-              <div className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Dumbbell className="size-4" />
-                  Fasilitas
+              {/* akses sauna */}
+              <div className="flex gap-2 font-medium w-full">
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShowerHead className="size-4" />
+                    Sauna
+                  </div>
+                  <span className="font-bold">
+                    {' '}
+                    {item.aksesSauna ? 'Ya' : 'Tidak'}
+                  </span>
                 </div>
-                <span className="font-bold">Ya</span>
               </div>
-            </div>
-          </CardFooter>
-        </Card>
+              {/* akses fasilitas */}
+              <div className="flex gap-2 font-medium w-full">
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Dumbbell className="size-4" />
+                    Fasilitas
+                  </div>
+                  <span className="font-bold">
+                    {item.aksesFasilitas ? 'Ya' : 'Tidak'}
+                  </span>
+                </div>
+              </div>
+              <Separator />
+              <div className="flex w-full items-center justify-end">
+                <span className="font-bold py-2">Rp. {item.harga}</span>
+              </div>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
     </div>
   );

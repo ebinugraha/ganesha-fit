@@ -15,10 +15,11 @@ import { IconTrendingUp } from '@tabler/icons-react';
 import { UserPlus } from 'lucide-react';
 import { DataTable } from './data-table';
 import { columns } from './column';
-import { prisma } from '../../../lib/prisma';
+import { db } from '../../../lib/prisma';
+import Link from 'next/link';
 
 const AnggotaPage = async () => {
-  const data = await prisma.anggota.findMany({});
+  const data = await db.anggota.findMany({});
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -29,8 +30,10 @@ const AnggotaPage = async () => {
             Halaman ini berisi tentang seluruh anggota dari gym
           </p>
         </div>
-        <Button size={'sm'} className="flex gap-2 w-full md:w-auto">
-          Tambah Pengunjung <UserPlus />
+        <Button size={'sm'} className="flex gap-2 w-full md:w-auto" asChild>
+          <Link href={'/anggota/tambah'} className="flex items-center gap-2">
+            Tambah Anggota <UserPlus />
+          </Link>
         </Button>
       </div>
 

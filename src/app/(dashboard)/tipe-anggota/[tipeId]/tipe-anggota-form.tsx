@@ -21,6 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { axiosInstance } from '@/lib/axios';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface TipeAnggotaFormProps {
   tipeAnggotaData: TipeKeanggotaan | null;
@@ -35,49 +36,80 @@ const formSchema = z.object({
   aksesPelatih: z.boolean(),
   aksesLoker: z.boolean(),
   aksesSauna: z.boolean(),
-  aksesFasilitas: z.boolean().nullable(),
+  aksesFasilitas: z.boolean(),
   isActive: z.boolean(),
 });
 
 export const TipeAnggotaForm = ({ tipeAnggotaData }: TipeAnggotaFormProps) => {
+  const router = useRouter();
+
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      nama: '',
-      harga: 0,
-      deskripsi: null,
-      durasiHari: 0,
-      aksesKelas: false,
-      aksesPelatih: false,
-      aksesLoker: false,
-      aksesSauna: false,
-      aksesFasilitas: null,
-      isActive: false,
-    },
+    defaultValues: tipeAnggotaData
+      ? tipeAnggotaData
+      : {
+          nama: '',
+          harga: 0,
+          deskripsi: null,
+          durasiHari: 0,
+          aksesKelas: false,
+          aksesPelatih: false,
+          aksesLoker: false,
+          aksesSauna: false,
+          aksesFasilitas: false,
+          isActive: false,
+        },
   });
 
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tipeAnggota`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(values),
-        }
-      );
+      // Check if the form is in edit mode or create mode
+      if (tipeAnggotaData) {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/tipeAnggota?id=${tipeAnggotaData.id}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(values),
+          }
+        );
 
-      const data = await response.json();
-      if (!response.ok) {
+        if (!response.ok) {
+          toast.error('Tipe Anggota gagal di buat', {
+            description: 'Tipe Anggota gagal di buat',
+          });
+        }
+
+        toast.success('Tipe Anggota berhasil di update', {
+          description: 'Tipe Anggota berhasil di update',
+        });
+
+        router.push('/tipe-anggota');
+      } else {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/tipeAnggota`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(values),
+          }
+        );
+        if (!response.ok) {
+          toast.error('Tipe Anggota gagal di buat', {
+            description: 'Tipe Anggota gagal di buat',
+          });
+        }
         toast.success('Tipe Anggota berhasil di buat', {
           description: 'Tipe Anggota berhasil di buat',
         });
+        router.push('/tipe-anggota');
       }
-      console.log(data);
     } catch (error) {
       console.log(error);
       toast.error('Tipe Anggota gagal di buat', {
@@ -171,7 +203,7 @@ export const TipeAnggotaForm = ({ tipeAnggotaData }: TipeAnggotaFormProps) => {
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                     <FormControl>
                       <Checkbox
-                        checked={field.value ?? false}
+                        checked={field.value}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>

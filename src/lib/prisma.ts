@@ -5,8 +5,8 @@ declare global {
 }
 
 // menggunakan koneksi yang sudah ada atau yang baru
-export const prisma =
-  global.prisma ||
+export const db =
+  globalThis.prisma ||
   new PrismaClient({
     log:
       process.env.NODE_ENV === 'development'
@@ -15,4 +15,4 @@ export const prisma =
   });
 
 // dalam mode depelopment, simpan koneksi di globalThis
-if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
+if (process.env.NODE_ENV !== 'production') global.prisma = db;
