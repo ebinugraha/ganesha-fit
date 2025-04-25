@@ -7,7 +7,7 @@ import { z } from 'zod';
 const anggotaSchema = z.object({
   nama: z.string().min(1).max(255),
   email: z.string().email().optional().nullable(),
-  JenisKelamin: z.enum(['LAKI_LAKI', 'PEREMPUAN']),
+  jenisKelamin: z.enum(['LAKI_LAKI', 'PEREMPUAN']),
   alamat: z.string().min(1).max(255).nullable(),
   tanggalLahir: z.string().optional().nullable(),
   noTelepon: z.string().optional().nullable(),
@@ -17,6 +17,17 @@ const anggotaSchema = z.object({
     .uuid({ message: 'Tipe keanggotaan tidak valid' }),
   tanggalMulai: z.string().optional().nullable(),
   durasi: z.number().optional(),
+
+  // nama: z.string().min(2, { message: "Nama harus diisi minimal 2 karakter" }),
+  // email: z.string().email({ message: "Format email tidak valid" }).optional().nullable(),
+  // jenisKelamin: z.enum(["LAKI_LAKI", "PEREMPUAN"]),
+  // alamat: z.string().optional().nullable(),
+  // tanggalLahir: z.string().optional().nullable(),
+  // noTelepon: z.string().optional().nullable(),
+  // fotoProfil: z.string().optional().nullable(),
+  // tipeKeanggotaanId: z.string().uuid({ message: "Tipe keanggotaan tidak valid" }),
+  // tanggalMulai: z.string().optional(),
+  // durasi: z.number().optional(), // Durasi dalam hari
 });
 
 const anggotaUpdateSchema = z.object({
@@ -46,12 +57,8 @@ export async function POST(request: NextRequest) {
 
     if (!resultValidation.success) {
       return NextResponse.json(
-        {
-          error: resultValidation.error.format(),
-        },
-        {
-          status: 400,
-        }
+        { message: 'Invalid data', errors: resultValidation.error.errors },
+        { status: 400 }
       );
     }
 
@@ -83,7 +90,7 @@ export async function POST(request: NextRequest) {
           nomorAnggota,
           nama: data.nama,
           email: data.email,
-          jenisKelamin: data.JenisKelamin,
+          jenisKelamin: data.jenisKelamin,
           alamat: data.alamat,
           fotoProfil: data.fotoProfil,
           tanggalLahir: data.tanggalLahir ? new Date(data.tanggalLahir) : null,
