@@ -121,7 +121,9 @@ const AnggotaPage = async () => {
               <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-2xl text-slate-700">
                 {item.nama}
               </CardTitle>
-              <span className="font-light text-sm">{item.deskripsi}</span>
+              <span className="font-light text-sm line-clamp-2 min-h-[40px]">
+                {item.deskripsi}
+              </span>
             </CardHeader>
             <CardFooter className="flex-col items-start gap-1.5 text-sm">
               {/* durasi */}

@@ -62,7 +62,7 @@ const data = {
     },
     {
       title: 'Kunjungan',
-      url: '#',
+      url: 'kunjungan',
       icon: IconDoor,
     },
     {

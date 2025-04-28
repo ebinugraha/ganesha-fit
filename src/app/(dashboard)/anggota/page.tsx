@@ -17,9 +17,30 @@ import { DataTable } from './data-table';
 import { columns } from './column';
 import { db } from '../../../lib/prisma';
 import Link from 'next/link';
+import { format } from 'date-fns';
 
 const AnggotaPage = async () => {
-  const data = await db.anggota.findMany({});
+  const data = await db.anggota.findMany({
+    include: {
+      keanggotaan: true,
+    },
+  });
+
+  var i: number = 1;
+
+  const formatedAnggota = data.map((item) => ({
+    no: i++,
+    id: item.id,
+    nomorAnggota: item.nomorAnggota,
+    nama: item.nama,
+    tanggalMulai: item.keanggotaan?.tanggalMulai
+      ? format(item.keanggotaan.tanggalMulai, 'yyyy-MM-dd')
+      : 'N/A',
+    tanggalBerakhir: item.keanggotaan?.tanggalBerakhir
+      ? format(item.keanggotaan.tanggalBerakhir, 'yyyy-MM-dd')
+      : 'N/A',
+    statusKeanggotaan: item.statusKeanggotaan,
+  }));
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -99,7 +120,7 @@ const AnggotaPage = async () => {
 
       {/* Section table anggota */}
       <div className="flex px-4 md:px-6 w-full">
-        <DataTable columns={columns} data={data} />
+        <DataTable columns={columns} data={formatedAnggota} />
       </div>
     </div>
   );

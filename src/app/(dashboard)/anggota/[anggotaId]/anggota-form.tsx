@@ -28,19 +28,32 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Anggota, TipeKeanggotaan } from '@prisma/client';
+import { Anggota, Keanggotaan, TipeKeanggotaan } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, CalendarX2Icon } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { startTransition, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-interface AnggotaFormProps {
-  anggota: Anggota | null;
-}
+// Konstanta untuk URL API
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// Tipe untuk props komponen
+type AnggotaFormProps = {
+  anggota:
+    | (Anggota & {
+        keanggotaan:
+          | (Keanggotaan & {
+              tipeKeanggotaan: TipeKeanggotaan;
+            })
+          | null;
+      })
+    | null;
+};
+
+// Skema validasi form menggunakan Zod
 const formSchema = z.object({
   nama: z
     .string()
@@ -63,37 +76,48 @@ const formSchema = z.object({
     .optional(),
 });
 
+// Tipe untuk nilai form
+type FormValues = z.infer<typeof formSchema>;
+
 export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
   const router = useRouter();
   const [tipeAnggota, setTipeAnggota] = useState<TipeKeanggotaan[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchTipeAnggota = async () => {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/tipeAnggota`
-        );
+  // Fungsi untuk mengambil data tipe anggota
+  const fetchTipeAnggota = async () => {
+    try {
+      const response = await fetch(`${API_URL}/tipeAnggota`);
 
-        if (!response.ok) {
-          toast.error('Gagal mengambil data tipe anggota');
-        }
-
-        const data = await response.json();
-
-        console.log(data);
-
-        setTipeAnggota(data.data);
-      } catch (error) {
-        toast.error('Gagal mengambil data tipe anggota');
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data tipe anggota');
       }
-    };
 
-    fetchTipeAnggota();
-  }, []);
+      const data = await response.json();
+      return data.data;
+    } catch (error) {
+      toast.error('Gagal mengambil data tipe anggota');
+      return [];
+    }
+  };
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
+  // Menginisialisasi nilai default form
+  const getDefaultValues = (): Partial<FormValues> => {
+    if (anggota) {
+      return {
+        nama: anggota.nama,
+        email: anggota.email,
+        jenisKelamin: anggota.jenisKelamin,
+        alamat: anggota.alamat,
+        tanggalLahir: anggota.tanggalLahir ?? undefined,
+        noTelepon: anggota.noTelepon,
+        fotoProfil: anggota.fotoProfil,
+        tipeKeanggotaanId: anggota.keanggotaan?.tipeKeanggotaanId,
+        tanggalMulai: anggota.keanggotaan?.tanggalMulai,
+      };
+    }
+
+    return {
       nama: '',
       email: '',
       jenisKelamin: undefined,
@@ -103,14 +127,55 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
       fotoProfil: '',
       tipeKeanggotaanId: '',
       tanggalMulai: new Date(),
-    },
+    };
+  };
+
+  // Inisialisasi form
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: getDefaultValues(),
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  // Mengambil data tipe anggota saat komponen dimuat
+  useEffect(() => {
+    const getTipeAnggota = async () => {
+      setIsLoading(true);
+      const data = await fetchTipeAnggota();
+      setTipeAnggota(data);
+      setIsLoading(false);
+    };
+
+    getTipeAnggota();
+  }, []);
+
+  // Fungsi untuk mengirim data form
+  const onSubmit = async (values: FormValues) => {
+    setIsLoading(true);
+
     try {
-      startTransition(() => {
-        toast.promise(
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/anggota`, {
+      if (anggota) {
+        // Update anggota yang sudah ada
+        await toast.promise(
+          fetch(`${API_URL}/anggota?id=${anggota.id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(values),
+          }),
+          {
+            loading: 'Mengubah data anggota...',
+            success: () => {
+              router.push('/anggota');
+              return 'Berhasil mengubah data anggota';
+            },
+            error: 'Gagal mengubah data anggota',
+          }
+        );
+      } else {
+        // Membuat anggota baru
+        await toast.promise(
+          fetch(`${API_URL}/anggota`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -118,27 +183,31 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
             body: JSON.stringify(values),
           }),
           {
-            loading: 'Menambah...',
+            loading: 'Menambah data anggota...',
             success: () => {
               router.push('/anggota');
-              return 'Berhasil menambah data';
+              return 'Berhasil menambah data anggota';
             },
-            error: 'Gagal Menambah',
+            error: 'Gagal menambah data anggota',
           }
         );
-      });
+      }
     } catch (error) {
-      toast.error('Tipe Anggota gagal di buat', {
-        description: 'Tipe Anggota gagal di buat',
+      toast.error('Terjadi kesalahan', {
+        description: 'Gagal menyimpan data anggota',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Render form
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 w-full">
       <Card className="w-full p-4 md:p-6 lg:p-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* Nama */}
             <FormField
               control={form.control}
               name="nama"
@@ -154,11 +223,13 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                     />
                   </FormControl>
                   <FormDescription>
-                    Masukkan nama lengkap anggota contoh: john doe, niki, dll..
+                    Masukkan nama lengkap anggota contoh: John Doe, Niki, dll.
                   </FormDescription>
                 </FormItem>
               )}
             />
+
+            {/* Email */}
             <FormField
               control={form.control}
               name="email"
@@ -171,7 +242,7 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                       placeholder="Email Anggota"
                       className="input"
                       {...field}
-                      value={field.value || ''} // Ensure value is always a string
+                      value={field.value || ''}
                     />
                   </FormControl>
                   <FormDescription>Masukkan email anggota</FormDescription>
@@ -179,7 +250,7 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
               )}
             />
 
-            {/* Jenissss kelaminnnnnn */}
+            {/* Jenis Kelamin */}
             <FormField
               control={form.control}
               name="jenisKelamin"
@@ -189,8 +260,7 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
-                    value={field.value} // Ensure value is always a string
-                    // Ensure value is always a string
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
@@ -205,15 +275,12 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    Pilih jenis kelamin anggota (Laki-laki, Perempuan)
-                  </FormDescription>
+                  <FormDescription>Pilih jenis kelamin anggota</FormDescription>
                 </FormItem>
               )}
             />
 
             {/* No Telepon */}
-
             <FormField
               control={form.control}
               name="noTelepon"
@@ -222,11 +289,11 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                   <FormLabel>No Telepon</FormLabel>
                   <FormControl>
                     <Input
-                      type="text"
+                      type="tel"
                       placeholder="No Telepon Anggota"
                       className="input"
                       {...field}
-                      value={field.value || ''} // Ensure value is always a string
+                      value={field.value || ''}
                     />
                   </FormControl>
                   <FormDescription>
@@ -235,6 +302,7 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                 </FormItem>
               )}
             />
+
             {/* Tanggal Lahir */}
             <FormField
               control={form.control}
@@ -246,7 +314,7 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
-                          variant={'outline'}
+                          variant="outline"
                           className={cn(
                             'w-full text-left pl-3',
                             !field.value && 'text-muted-foreground'
@@ -259,12 +327,13 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="p-0 w-full" align="start">
+                    <PopoverContent className="p-0 w-auto" align="start">
                       <Calendar
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
                         initialFocus
+                        disabled={(date) => date > new Date()}
                       />
                     </PopoverContent>
                   </Popover>
@@ -274,7 +343,6 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
             />
 
             {/* Alamat */}
-
             <FormField
               control={form.control}
               name="alamat"
@@ -286,15 +354,17 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                       type="text"
                       placeholder="Alamat Anggota"
                       {...field}
-                      value={field.value || ''} // Ensure value is always a string
+                      value={field.value || ''}
                     />
                   </FormControl>
+                  <FormDescription>
+                    Masukkan alamat lengkap anggota
+                  </FormDescription>
                 </FormItem>
               )}
             />
 
-            {/* Tipe keanggotaan menggunakan select */}
-
+            {/* Tipe Keanggotaan */}
             <FormField
               control={form.control}
               name="tipeKeanggotaanId"
@@ -304,7 +374,8 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
-                    value={field.value} // Ensure value is always a string
+                    value={field.value}
+                    disabled={isLoading || tipeAnggota.length === 0}
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
@@ -322,12 +393,26 @@ export const AnggotaForm = ({ anggota }: AnggotaFormProps) => {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                  <FormDescription>
+                    Pilih tipe keanggotaan untuk anggota ini
+                  </FormDescription>
                 </FormItem>
               )}
             />
-            <Button type="submit">Submit</Button>
+
+            {/* Tombol Submit */}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full md:w-auto"
+            >
+              {isLoading
+                ? 'Memproses...'
+                : anggota
+                ? 'Perbarui Anggota'
+                : 'Tambah Anggota'}
+            </Button>
           </form>
-          {/* Namaaa anggotaaa */}
         </Form>
       </Card>
     </div>

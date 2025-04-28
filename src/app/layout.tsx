@@ -1,28 +1,29 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono, Nunito } from "next/font/google";
-import "./globals.css";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { ClerkProvider } from "@clerk/nextjs";
-import { Toaster } from "@/components/ui/sonner";
+import type { Metadata } from 'next';
+import { Geist, Geist_Mono, Nunito } from 'next/font/google';
+import './globals.css';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { ClerkProvider } from '@clerk/nextjs';
+import { Toaster } from '@/components/ui/sonner';
+import NextTopLoader from 'nextjs-toploader';
 
 const nunito = Nunito({
-  variable: "--font-nunito",
-  subsets: ["latin"],
-})
+  variable: '--font-nunito',
+  subsets: ['latin'],
+});
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  title: "GaneshaFit",
-  description: "Sistem Informasi Operasional GYM",
+  title: 'GaneshaFit',
+  description: 'Sistem Informasi Operasional GYM',
 };
 
 export default function RootLayout({
@@ -31,15 +32,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>    
-        <html lang="en">
-          <body
-            className={`${nunito.className} antialiased`}
-          >
-            {children}
-            <Toaster/>
-          </body>
-        </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body className={`${nunito.className} antialiased`}>
+          <NextTopLoader />
+          {children}
+          <Toaster />
+        </body>
+      </html>
     </ClerkProvider>
   );
 }
