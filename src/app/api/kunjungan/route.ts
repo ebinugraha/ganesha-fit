@@ -9,7 +9,98 @@ const checkinSchema = z.object({
   catatan: z.string().optional().nullable(),
 });
 
-export async function GET() {}
+export async function GET(request: NextRequest) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json(
+        {
+          error: 'Unauthorized',
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    const url = new URL(request.url);
+
+    const anggotaId = url.searchParams.get('anggotaId');
+    const tanggal = url.searchParams.get('tanggal');
+    const limit = url.searchParams.get('limit')
+      ? parseInt(url.searchParams.get('limit')!)
+      : 10;
+    const page = url.searchParams.get('page')
+      ? parseInt(url.searchParams.get('page')!)
+      : 1;
+    const skip = (page - 1) * limit;
+
+    const query: Record<string, string | Record<string, Date>> = {};
+
+    if (anggotaId) {
+      query.anggotaId = anggotaId;
+    }
+
+    if (tanggal) {
+      const date = new Date(tanggal);
+      const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+
+      query.tanggal = {
+        gte: startOfDay,
+        lte: endOfDay,
+      };
+    }
+
+    const [kunjungan, totalCount] = await Promise.all([
+      db.checkInCheckOut.findMany({
+        where: query,
+        include: {
+          anggota: {
+            select: {
+              nama: true,
+              nomorAnggota: true,
+              fotoProfil: true,
+            },
+          },
+          petugas: {
+            select: {
+              nama: true,
+            },
+          },
+        },
+        orderBy: {
+          waktuCheckIn: 'desc',
+        },
+        take: limit,
+        skip,
+      }),
+      db.checkInCheckOut.count({
+        where: query,
+      }),
+    ]);
+
+    return NextResponse.json({
+      data: kunjungan,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: 'Internal Server Error',
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
