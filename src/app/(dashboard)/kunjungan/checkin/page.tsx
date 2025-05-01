@@ -1,4 +1,46 @@
-const CheckInPage = () => {
+import { Card } from '@/components/ui/card';
+import { db } from '@/lib/prisma';
+import { CardView } from './components/card-view';
+
+const CheckInPage = async () => {
+  // Todo get data anggota yang belum check in pakai prisma
+  const hariIni = new Date();
+  hariIni.setHours(0, 0, 0, 0);
+  const akhirHari = new Date();
+  akhirHari.setHours(23, 59, 59, 999);
+
+  const sudahCheckin = await db.checkInCheckOut.findMany({
+    where: {
+      waktuCheckIn: {
+        gte: hariIni,
+        lte: akhirHari,
+      },
+    },
+    select: {
+      anggotaId: true,
+    },
+  });
+
+  const idSudahCheckIn = sudahCheckin.map((item) => item.anggotaId);
+
+  const dataAnggota = await db.anggota.findMany({
+    where: {
+      id: {
+        notIn: idSudahCheckIn,
+      },
+    },
+    include: {
+      keanggotaan: {
+        include: {
+          tipeKeanggotaan: true,
+        },
+      },
+    },
+    orderBy: {
+      nomorAnggota: 'asc',
+    },
+  });
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div className="px-4 md:px-8 flex items-center justify-between gap-4">
@@ -7,8 +49,9 @@ const CheckInPage = () => {
           <p className="text-sm text-muted-foreground">Check-In Anggota</p>
         </div>
       </div>
+      {/* Tambahkan search anggota berdasarkan nama  */}
       <div className="px-4 md:px-8 flex">
-        <div className="w-full"></div>
+        <CardView anggota={dataAnggota} />
       </div>
     </div>
   );
